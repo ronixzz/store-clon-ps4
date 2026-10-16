@@ -17,12 +17,11 @@ jobs:
         run: |
           echo "==> Instalando dependencias..."
           sudo apt-get update -y
-          sudo apt-get install -y curl tar
+          sudo apt-get install -y git
 
-          echo "==> Descargando motor base (WebKit)..."
-          mkdir builder_repo
-          # Curl con tarball extrae directo sin importar nombres de ramas
-          curl -sL "https://github.com/Gkiokan/ps4-mac-pkg-builder/tarball/master" | tar -xz -C builder_repo --strip-components=1
+          echo "==> Clonando motor base (WebKit)..."
+          # git clone saca la rama por defecto sin importar si es main o master
+          git clone --depth 1 https://github.com/Gkiokan/ps4-mac-pkg-builder.git builder_repo
           
           echo "==> Preparando orbis-pub-cmd..."
           mkdir tools
