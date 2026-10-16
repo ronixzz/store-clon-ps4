@@ -13,47 +13,52 @@ jobs:
       - name: Clonar código de la tienda
         uses: actions/checkout@v4
 
-      - name: Instalar Dependencias (Con Pantalla Virtual)
+      - name: Caché de Herramientas (Velocidad Extrema)
+        id: cache-motor
+        uses: actions/cache@v4
+        with:
+          path: motor_ps4/
+          key: motor-ps4-definitivo
+
+      - name: Instalar Dependencias (Pantalla Virtual)
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update -q
-          sudo apt-get install -y wine64 wine32 xvfb curl unzip git
+          sudo apt-get install -y wine64 wine32 xvfb curl unzip git wget
 
-      - name: Descargar Herramientas FPKG
+      - name: Configurar Motor (Solo la primera vez)
+        if: steps.cache-motor.outputs.cache-hit != 'true'
         run: |
-          echo "==> Cazando herramientas FPKG completas..."
-          git clone --depth 1 https://github.com/CyB1K/PS4-Fake-PKG-Tools-3.87.git tools_fpkg || git clone --depth 1 https://github.com/theheroGAC/ps4-fake-pkg-tools.git tools_fpkg
-
-      - name: Descargar WebKit Wrapper (Bucle Inmune)
-        run: |
-          echo "==> Extrayendo Wrapper desde repositorios activos..."
-          URLS=(
-            "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/main.zip"
-            "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
-            "https://github.com/Scene-Stars/PS4-Web-Wrapper/archive/refs/heads/main.zip"
-            "https://github.com/CyB1K/PS4-Web-Wrapper/archive/refs/heads/main.zip"
-          )
+          echo "==> Creando bóveda de caché..."
+          mkdir -p motor_ps4/tools
+          mkdir -p motor_ps4/wrapper
           
-          for url in "${URLS[@]}"; do
-            echo "Probando: $url"
-            if curl -sL -f "$url" -o base.zip; then
-              echo "==> ¡Bingo! Descarga exitosa."
-              break
-            fi
-          done
+          echo "==> Descargando FPKG Tools..."
+          git clone --depth 1 https://github.com/CyB1K/PS4-Fake-PKG-Tools-3.87.git temp_tools || git clone --depth 1 https://github.com/theheroGAC/ps4-fake-pkg-tools.git temp_tools
+          cp -r temp_tools/* motor_ps4/tools/
           
+          echo "==> Rescatando WebKit Wrapper (Archive.org)..."
+          # Wget con User-Agent falso para que Archive.org no nos bloquee
+          wget -U "Mozilla/5.0" -qO base.zip "https://web.archive.org/web/20220901000000id_/https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
           unzip -q base.zip
+          
+          EBOOT_PATH=$(find ps4-mac-pkg-builder-master -name "eboot.bin" | head -n 1)
+          SFO_PATH=$(find ps4-mac-pkg-builder-master -name "param.sfo" | head -n 1)
+          
+          cp "$EBOOT_PATH" motor_ps4/wrapper/eboot.bin
+          SFO_DIR=$(dirname "$SFO_PATH")
+          cp -r "$SFO_DIR"/* motor_ps4/wrapper/
+
+      - name: Inyectar Tu Tienda HTML
+        run: |
+          echo "==> Ensamblando piezas desde caché..."
           mkdir -p build_base/sce_sys/about
           
-          EBOOT_PATH=$(find . -name "eboot.bin" | head -n 1)
-          SFO_PATH=$(find . -name "param.sfo" | head -n 1)
+          # Sacar motor de la bóveda
+          cp motor_ps4/wrapper/eboot.bin build_base/eboot.bin
+          cp -r motor_ps4/wrapper/* build_base/sce_sys/
           
-          cp "$EBOOT_PATH" build_base/eboot.bin
-          SFO_DIR=$(dirname "$SFO_PATH")
-          cp -r "$SFO_DIR"/* build_base/sce_sys/
-
-      - name: Inyectar Tu Tienda
-        run: |
+          # Inyectar tus archivos
           cp index.html build_base/
           cp style.css build_base/
           cp app.js build_base/
@@ -92,8 +97,8 @@ jobs:
 
       - name: Compilar PKG Final
         run: |
-          echo "==> Empaquetando..."
-          TOOL_DIR=$(dirname "$(find tools_fpkg -name "orbis-pub-cmd.exe" | head -n 1)")
+          echo "==> Empaquetando tienda..."
+          TOOL_DIR=$(dirname "$(find motor_ps4/tools -name "orbis-pub-cmd.exe" | head -n 1)")
           xvfb-run -a wine "$TOOL_DIR/orbis-pub-cmd.exe" img_create --oformat pkg project.gp4 RonixzStore.pkg
 
       - name: Entregar el PKG
