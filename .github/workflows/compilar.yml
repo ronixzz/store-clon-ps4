@@ -13,49 +13,41 @@ jobs:
       - name: Clonar código de la tienda
         uses: actions/checkout@v4
 
-      - name: Configurar Caché (Salto a la Velocidad de la Luz)
+      - name: Configurar Caché del Motor
         id: cache-motor
         uses: actions/cache@v4
         with:
           path: |
             tools/
             build_base/
-          key: motor-ps4-v1
+          key: motor-ps4-v2
 
       - name: Instalar Dependencias del Sistema
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update -q
-          sudo apt-get install -y wine64 wine32 aria2 unzip git
+          sudo apt-get install -y wine64 wine32 git unzip
 
-      - name: Descargar Motor a Máxima Velocidad (Solo 1ra vez)
+      - name: Descargar Herramientas y Wrapper (Solo 1ra vez)
         if: steps.cache-motor.outputs.cache-hit != 'true'
         run: |
-          echo "==> Acelerando descargas con 16 conexiones simultáneas..."
-          
-          # Cazar herramientas FPKG
-          TOOLS_REPOS=(
-            "https://github.com/CyB1K/PS4-Fake-PKG-Tools-3.87.git"
-            "https://github.com/theheroGAC/ps4-fake-pkg-tools.git"
-            "https://github.com/illusion0001/ps4-fake-pkg-tools.git"
-          )
-          for repo in "${TOOLS_REPOS[@]}"; do
-            if git clone --depth 1 "$repo" tools_fpkg; then break; fi
-          done
+          echo "==> Descargando herramientas FPKG..."
+          git clone --depth 1 https://github.com/CyB1K/PS4-Fake-PKG-Tools-3.87.git tools_fpkg || git clone --depth 1 https://github.com/theheroGAC/ps4-fake-pkg-tools.git tools_fpkg
           mkdir -p tools
           find tools_fpkg -name "orbis-pub-cmd.exe" -exec cp {} tools/ \;
           
-          # Cazar WebKit base (16 hilos contra archive.org)
-          aria2c -x 16 -s 16 -k 1M "https://web.archive.org/web/20220901000000id_/https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip" -o base.zip
-          unzip -q base.zip
+          echo "==> Descargando WebKit Wrapper base..."
+          git clone --depth 1 https://github.com/Scene-Stars/PS4-Web-Wrapper.git wrapper_repo || git clone --depth 1 https://github.com/RetroGamer74/PS4-Web-Wrapper.git wrapper_repo
           
           mkdir -p build_base/sce_sys/about
-          cp -r ps4-mac-pkg-builder-master/pkg-build/sce_sys/* build_base/sce_sys/
-          cp ps4-mac-pkg-builder-master/pkg-build/eboot.bin build_base/
+          EBOOT_PATH=$(find wrapper_repo -name "eboot.bin" | head -n 1)
+          SFO_PATH=$(find wrapper_repo -name "param.sfo" | head -n 1)
+          
+          cp "$EBOOT_PATH" build_base/eboot.bin
+          cp "$SFO_PATH" build_base/sce_sys/param.sfo || true
 
       - name: Inyectar Tu Tienda
         run: |
-          # Actualiza los archivos web frescos
           cp index.html build_base/
           cp style.css build_base/
           cp app.js build_base/
