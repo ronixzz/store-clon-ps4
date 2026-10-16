@@ -13,18 +13,24 @@ jobs:
       - name: Clonar código de la tienda
         uses: actions/checkout@v4
 
-      - name: Preparar entorno (Wine & FPKG Tools)
+      - name: Preparar entorno
         run: |
-          sudo dpkg --add-architecture i386
           sudo apt-get update -y
-          sudo apt-get install -y wine64 wine32 wget unzip curl
-          git clone https://github.com/hippie68/ps4-fake-pkg-tools.git tools
+          sudo apt-get install -y wget unzip curl
+          
+          # Descargar orbis-pub-cmd nativo de Linux desde una fuente alterna
+          wget -qO orbis-pub-cmd-linux.zip "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
+          unzip -q orbis-pub-cmd-linux.zip
+          
+          # Mover la herramienta a un lugar cómodo
+          mkdir tools
+          cp ps4-mac-pkg-builder-master/pkg-build/linux/orbis-pub-cmd tools/
+          chmod +x tools/orbis-pub-cmd
 
       - name: Obtener Base WebKit de PS4
         run: |
           mkdir -p build_base/sce_sys/about
-          wget -qO webkit_base.zip "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
-          unzip -q webkit_base.zip
+          # Ya tenemos el zip descargado del paso anterior
           cp -r ps4-mac-pkg-builder-master/pkg-build/sce_sys/* build_base/sce_sys/
           cp ps4-mac-pkg-builder-master/pkg-build/eboot.bin build_base/
 
@@ -58,8 +64,8 @@ jobs:
 
       - name: Compilar el .PKG
         run: |
-          cd tools/Windows
-          wine orbis-pub-cmd.exe img_create --oformat pkg ../../project.gp4 ../../RonixzStore.pkg
+          # Usamos la versión de Linux, cero Wine, cero errores
+          ./tools/orbis-pub-cmd img_create --oformat pkg project.gp4 RonixzStore.pkg
 
       - name: Entregar el PKG
         uses: actions/upload-artifact@v4
