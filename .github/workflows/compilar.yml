@@ -13,20 +13,20 @@ jobs:
       - name: Clonar código de la tienda
         uses: actions/checkout@v4
 
-      - name: Caché de Herramientas (Velocidad Extrema)
+      - name: Caché de Herramientas (Bóveda Invencible)
         id: cache-motor
         uses: actions/cache@v4
         with:
           path: motor_ps4/
-          key: motor-ps4-definitivo
+          key: motor-ps4-invencible
 
-      - name: Instalar Dependencias (Pantalla Virtual)
+      - name: Instalar Dependencias (Pantalla Virtual y Python)
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update -q
-          sudo apt-get install -y wine64 wine32 xvfb curl unzip git wget
+          sudo apt-get install -y wine64 wine32 xvfb git python3
 
-      - name: Configurar Motor (Solo la primera vez)
+      - name: Configurar Motor (Escáner de Supervivientes)
         if: steps.cache-motor.outputs.cache-hit != 'true'
         run: |
           echo "==> Creando bóveda de caché..."
@@ -37,13 +37,33 @@ jobs:
           git clone --depth 1 https://github.com/CyB1K/PS4-Fake-PKG-Tools-3.87.git temp_tools || git clone --depth 1 https://github.com/theheroGAC/ps4-fake-pkg-tools.git temp_tools
           cp -r temp_tools/* motor_ps4/tools/
           
-          echo "==> Rescatando WebKit Wrapper (Archive.org)..."
-          # Wget con User-Agent falso para que Archive.org no nos bloquee
-          wget -U "Mozilla/5.0" -qO base.zip "https://web.archive.org/web/20220901000000id_/https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
-          unzip -q base.zip
+          echo "==> Activando Inteligencia Cazadora para WebKit Wrapper..."
+          python3 -c '
+          import urllib.request, urllib.parse, json, os, sys
+          print("Buscando forks de WebKit que sobrevivieron a Sony...")
+          queries = ["PS4-Web-Wrapper fork:true", "ps4-mac-pkg-builder fork:true"]
           
-          EBOOT_PATH=$(find ps4-mac-pkg-builder-master -name "eboot.bin" | head -n 1)
-          SFO_PATH=$(find ps4-mac-pkg-builder-master -name "param.sfo" | head -n 1)
+          for q in queries:
+              url = "https://api.github.com/search/repositories?q=" + urllib.parse.quote(q)
+              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+              try:
+                  data = json.loads(urllib.request.urlopen(req).read())
+                  for repo in data.get("items", []):
+                      clone_url = repo["clone_url"]
+                      print(f"[*] Escaneando repositorio vivo: {clone_url}")
+                      # Si logra clonarlo, cerramos la búsqueda con éxito
+                      if os.system(f"git clone --depth 1 {clone_url} wrapper_repo") == 0:
+                          print("[+] Archivos extraídos con éxito. Bucle terminado.")
+                          sys.exit(0)
+              except Exception as e:
+                  print(f"Error en API: {e}")
+          print("[-] Falla crítica: No se encontraron repositorios.")
+          sys.exit(1)
+          '
+          
+          echo "==> Extrayendo motor interno..."
+          EBOOT_PATH=$(find wrapper_repo -name "eboot.bin" | head -n 1)
+          SFO_PATH=$(find wrapper_repo -name "param.sfo" | head -n 1)
           
           cp "$EBOOT_PATH" motor_ps4/wrapper/eboot.bin
           SFO_DIR=$(dirname "$SFO_PATH")
@@ -54,11 +74,9 @@ jobs:
           echo "==> Ensamblando piezas desde caché..."
           mkdir -p build_base/sce_sys/about
           
-          # Sacar motor de la bóveda
           cp motor_ps4/wrapper/eboot.bin build_base/eboot.bin
           cp -r motor_ps4/wrapper/* build_base/sce_sys/
           
-          # Inyectar tus archivos
           cp index.html build_base/
           cp style.css build_base/
           cp app.js build_base/
