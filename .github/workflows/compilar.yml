@@ -13,24 +13,20 @@ jobs:
       - name: Clonar código de la tienda
         uses: actions/checkout@v4
 
-      - name: Instalar Dependencias Básicas
+      - name: Instalar Dependencias (Con Pantalla Virtual)
         run: |
+          sudo dpkg --add-architecture i386
           sudo apt-get update -q
-          sudo apt-get install -y curl unzip
-          # Cero Wine. Pura velocidad nativa.
+          sudo apt-get install -y wine64 wine32 xvfb curl unzip git
 
-      - name: Descargar OpenOrbis Toolchain (Linux Nativo)
+      - name: Descargar Herramientas FPKG
         run: |
-          echo "==> Descargando motor nativo ultraligero..."
-          curl -sL "https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5/ToolchainLinux.zip" -o openorbis.zip
-          unzip -q openorbis.zip -d orbis_tools
-          
-          # Darle permisos de ejecución al binario nativo
-          chmod +x orbis_tools/bin/linux/orbis-pub-cmd
+          echo "==> Cazando herramientas FPKG completas..."
+          git clone --depth 1 https://github.com/CyB1K/PS4-Fake-PKG-Tools-3.87.git tools_fpkg || git clone --depth 1 https://github.com/theheroGAC/ps4-fake-pkg-tools.git tools_fpkg
 
-      - name: Descargar WebKit Wrapper (Bucle Rápido)
+      - name: Descargar WebKit Wrapper (Bucle Inmune)
         run: |
-          echo "==> Cazando Wrapper en la red..."
+          echo "==> Extrayendo Wrapper desde repositorios activos..."
           URLS=(
             "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/main.zip"
             "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
@@ -39,7 +35,11 @@ jobs:
           )
           
           for url in "${URLS[@]}"; do
-            if curl -sL -f "$url" -o base.zip; then break; fi
+            echo "Probando: $url"
+            if curl -sL -f "$url" -o base.zip; then
+              echo "==> ¡Bingo! Descarga exitosa."
+              break
+            fi
           done
           
           unzip -q base.zip
@@ -52,7 +52,7 @@ jobs:
           SFO_DIR=$(dirname "$SFO_PATH")
           cp -r "$SFO_DIR"/* build_base/sce_sys/
 
-      - name: Inyectar Tu Tienda HTML
+      - name: Inyectar Tu Tienda
         run: |
           cp index.html build_base/
           cp style.css build_base/
@@ -87,12 +87,14 @@ jobs:
             </volume>
           </ps4_project>
           EOF
+          
           echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" | base64 -d > build_base/sce_sys/icon0.png
 
       - name: Compilar PKG Final
         run: |
-          echo "==> Empaquetando en metal puro a máxima velocidad..."
-          ./orbis_tools/bin/linux/orbis-pub-cmd img_create --oformat pkg project.gp4 RonixzStore.pkg
+          echo "==> Empaquetando..."
+          TOOL_DIR=$(dirname "$(find tools_fpkg -name "orbis-pub-cmd.exe" | head -n 1)")
+          xvfb-run -a wine "$TOOL_DIR/orbis-pub-cmd.exe" img_create --oformat pkg project.gp4 RonixzStore.pkg
 
       - name: Entregar el PKG
         uses: actions/upload-artifact@v4
