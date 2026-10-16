@@ -13,27 +13,46 @@ jobs:
       - name: Clonar código de la tienda
         uses: actions/checkout@v4
 
-      - name: Instalar Dependencias (Con Pantalla Virtual)
+      - name: Instalar Dependencias Básicas
         run: |
-          sudo dpkg --add-architecture i386
           sudo apt-get update -q
-          # Agregamos xvfb (X Virtual FrameBuffer) para engañar a Wine
-          sudo apt-get install -y wine64 wine32 xvfb wget unzip git
+          sudo apt-get install -y curl unzip
+          # Cero Wine. Pura velocidad nativa.
 
-      - name: Descargar Herramientas y Wrapper Base
+      - name: Descargar OpenOrbis Toolchain (Linux Nativo)
         run: |
-          echo "==> Descargando Fake PKG Tools completas..."
-          git clone --depth 1 https://github.com/CyB1K/PS4-Fake-PKG-Tools-3.87.git tools_fpkg || git clone --depth 1 https://github.com/theheroGAC/ps4-fake-pkg-tools.git tools_fpkg
+          echo "==> Descargando motor nativo ultraligero..."
+          curl -sL "https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5/ToolchainLinux.zip" -o openorbis.zip
+          unzip -q openorbis.zip -d orbis_tools
           
-          echo "==> Descargando Wrapper..."
-          wget -qO base.zip "https://web.archive.org/web/20220901000000id_/https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
-          unzip -q base.zip
-          
-          mkdir -p build_base/sce_sys/about
-          cp -r ps4-mac-pkg-builder-master/pkg-build/sce_sys/* build_base/sce_sys/
-          cp ps4-mac-pkg-builder-master/pkg-build/eboot.bin build_base/
+          # Darle permisos de ejecución al binario nativo
+          chmod +x orbis_tools/bin/linux/orbis-pub-cmd
 
-      - name: Inyectar Tu Tienda
+      - name: Descargar WebKit Wrapper (Bucle Rápido)
+        run: |
+          echo "==> Cazando Wrapper en la red..."
+          URLS=(
+            "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/main.zip"
+            "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
+            "https://github.com/Scene-Stars/PS4-Web-Wrapper/archive/refs/heads/main.zip"
+            "https://github.com/CyB1K/PS4-Web-Wrapper/archive/refs/heads/main.zip"
+          )
+          
+          for url in "${URLS[@]}"; do
+            if curl -sL -f "$url" -o base.zip; then break; fi
+          done
+          
+          unzip -q base.zip
+          mkdir -p build_base/sce_sys/about
+          
+          EBOOT_PATH=$(find . -name "eboot.bin" | head -n 1)
+          SFO_PATH=$(find . -name "param.sfo" | head -n 1)
+          
+          cp "$EBOOT_PATH" build_base/eboot.bin
+          SFO_DIR=$(dirname "$SFO_PATH")
+          cp -r "$SFO_DIR"/* build_base/sce_sys/
+
+      - name: Inyectar Tu Tienda HTML
         run: |
           cp index.html build_base/
           cp style.css build_base/
@@ -72,16 +91,11 @@ jobs:
 
       - name: Compilar PKG Final
         run: |
-          echo "==> Empaquetando sin separar las librerías..."
-          # Buscamos la carpeta exacta de la herramienta sin moverla de lugar
-          TOOL_DIR=$(dirname "$(find tools_fpkg -name "orbis-pub-cmd.exe" | head -n 1)")
-          
-          # Ejecutamos con xvfb-run -a para crear el monitor virtual
-          xvfb-run -a wine "$TOOL_DIR/orbis-pub-cmd.exe" img_create --oformat pkg project.gp4 RonixzStore.pkg
+          echo "==> Empaquetando en metal puro a máxima velocidad..."
+          ./orbis_tools/bin/linux/orbis-pub-cmd img_create --oformat pkg project.gp4 RonixzStore.pkg
 
       - name: Entregar el PKG
         uses: actions/upload-artifact@v4
         with:
           name: Ronixz_Store_PS4
           path: RonixzStore.pkg
-
