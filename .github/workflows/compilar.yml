@@ -18,7 +18,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: motor_ps4/
-          key: motor-ps4-invencible
+          key: motor-ps4-v6
 
       - name: Instalar Dependencias (Pantalla Virtual y Python)
         run: |
@@ -26,7 +26,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y wine64 wine32 xvfb git python3
 
-      - name: Configurar Motor (Escáner de Supervivientes)
+      - name: Configurar Motor (Escáner Inteligente con Ojos)
         if: steps.cache-motor.outputs.cache-hit != 'true'
         run: |
           echo "==> Creando bóveda de caché..."
@@ -38,28 +38,37 @@ jobs:
           cp -r temp_tools/* motor_ps4/tools/
           
           echo "==> Activando Inteligencia Cazadora para WebKit Wrapper..."
-          python3 -c '
+          cat << 'EOF' > hunter.py
           import urllib.request, urllib.parse, json, os, sys
-          print("Buscando forks de WebKit que sobrevivieron a Sony...")
-          queries = ["PS4-Web-Wrapper fork:true", "ps4-mac-pkg-builder fork:true"]
+          print("Buscando forks de WebKit vivos...")
+          queries = ["ps4-mac-pkg-builder fork:true", "PS4-Web-Wrapper fork:true"]
           
           for q in queries:
-              url = "https://api.github.com/search/repositories?q=" + urllib.parse.quote(q)
+              url = "https://api.github.com/search/repositories?q=" + urllib.parse.quote(q) + "&sort=updated"
               req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
               try:
                   data = json.loads(urllib.request.urlopen(req).read())
                   for repo in data.get("items", []):
                       clone_url = repo["clone_url"]
-                      print(f"[*] Escaneando repositorio vivo: {clone_url}")
-                      # Si logra clonarlo, cerramos la búsqueda con éxito
-                      if os.system(f"git clone --depth 1 {clone_url} wrapper_repo") == 0:
-                          print("[+] Archivos extraídos con éxito. Bucle terminado.")
-                          sys.exit(0)
+                      print(f"\n[*] Evaluando: {clone_url}")
+                      os.system("rm -rf wrapper_repo")
+                      
+                      # Clona silenciosamente
+                      if os.system(f"git clone --depth 1 {clone_url} wrapper_repo -q") == 0:
+                          # VERIFICACIÓN CLAVE: Busca si tiene eboot.bin
+                          eboot = os.popen('find wrapper_repo -name "eboot.bin"').read().strip()
+                          if eboot:
+                              print(f"[+] ¡Éxito! Motor real encontrado en: {eboot}")
+                              sys.exit(0)
+                          else:
+                              print("[-] Es basura (Falso positivo sin eboot). Descartando...")
               except Exception as e:
-                  print(f"Error en API: {e}")
-          print("[-] Falla crítica: No se encontraron repositorios.")
+                  pass
+          print("[-] Falla crítica: No se encontraron repositorios válidos.")
           sys.exit(1)
-          '
+          EOF
+          
+          python3 hunter.py
           
           echo "==> Extrayendo motor interno..."
           EBOOT_PATH=$(find wrapper_repo -name "eboot.bin" | head -n 1)
