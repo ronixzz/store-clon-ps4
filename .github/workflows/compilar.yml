@@ -2,7 +2,7 @@ name: Compilar Tienda PS4
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -10,36 +10,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clonar código de la tienda
+      - name: Clonar tu código
         uses: actions/checkout@v4
 
-      - name: Preparar entorno
+      - name: Ensamblar Motor y Compilar PKG
         run: |
+          echo "==> Instalando dependencias..."
           sudo apt-get update -y
-          sudo apt-get install -y wget unzip curl
+          sudo apt-get install -y curl tar
+
+          echo "==> Descargando motor base (WebKit)..."
+          mkdir builder_repo
+          # Curl con tarball extrae directo sin importar nombres de ramas
+          curl -sL "https://github.com/Gkiokan/ps4-mac-pkg-builder/tarball/master" | tar -xz -C builder_repo --strip-components=1
           
+          echo "==> Preparando orbis-pub-cmd..."
           mkdir tools
-          wget -qO orbis-pub-cmd-linux.zip "https://github.com/Gkiokan/ps4-mac-pkg-builder/archive/refs/heads/master.zip"
-          unzip -q orbis-pub-cmd-linux.zip
-          
-          cp ps4-mac-pkg-builder-master/pkg-build/linux/orbis-pub-cmd tools/
+          cp builder_repo/pkg-build/linux/orbis-pub-cmd tools/
           chmod +x tools/orbis-pub-cmd
-
-      - name: Obtener Base WebKit de PS4
-        run: |
+          
+          echo "==> Armando estructura del juego..."
           mkdir -p build_base/sce_sys/about
-          cp -r ps4-mac-pkg-builder-master/pkg-build/sce_sys/* build_base/sce_sys/
-          cp ps4-mac-pkg-builder-master/pkg-build/eboot.bin build_base/
-
-      - name: Inyectar Código Fuente
-        run: |
+          cp -r builder_repo/pkg-build/sce_sys/* build_base/sce_sys/
+          cp builder_repo/pkg-build/eboot.bin build_base/
+          
+          echo "==> Inyectando tu Tienda HTML..."
           cp index.html build_base/
           cp style.css build_base/
           cp app.js build_base/
           cp database.js build_base/
-
-      - name: Generar archivo de proyecto (.gp4)
-        run: |
+          
+          echo "==> Escribiendo project.gp4..."
           cat << 'EOF' > project.gp4
           <?xml version="1.0" encoding="utf-8"?>
           <ps4_project fmt_ver="1000" version="1.0.0">
@@ -58,12 +59,11 @@ jobs:
             </volume>
           </ps4_project>
           EOF
-
-      - name: Compilar el .PKG
-        run: |
+          
+          echo "==> Empaquetando PKG..."
           ./tools/orbis-pub-cmd img_create --oformat pkg project.gp4 RonixzStore.pkg
 
-      - name: Entregar el PKG
+      - name: Entregar el PKG Final
         uses: actions/upload-artifact@v4
         with:
           name: Ronixz_Store_PS4
