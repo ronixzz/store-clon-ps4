@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ronixz Premium Store</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon">R</div>
+            <div class="logo-text">Ronixz<br><span>Premium Store</span></div>
+        </div>
+        <ul class="menu">
+            <li tabindex="0" id="btn-home">🏠 Home</li>
+            <li tabindex="0" id="btn-search">🔍 Search</li>
+            <li tabindex="0" id="btn-allgames">🎮 All Games</li>
+            <li tabindex="0" id="btn-themes">🎨 Themes</li>
+            <li tabindex="0" class="active" id="btn-categories">🗂️ Categories</li>
+            <li tabindex="0">🏢 Game Studios</li>
+            <li tabindex="0">⭐ Favorites</li>
+            <li tabindex="0" style="color: #00aaff;">⬇️ Downloads (0)</li>
+            <li tabindex="0">👤 Account</li>
+            <li tabindex="0">⚙️ Settings</li>
+            <li tabindex="0">❌ Exit</li>
+        </ul>
+        <div class="version">version: v1.00 (Base/Update/DLC Engine)</div>
+    </nav>
+
+    <main class="content">
+        <!-- VISTA DE CATEGORÍAS -->
+        <div id="view-categories" class="vista-activa">
+            <div class="grid-categorias"></div>
+        </div>
+
+        <!-- VISTA DE JUEGOS -->
+        <div id="view-games" class="vista-oculta">
+            <div class="header-juegos">
+                <h2 id="titulo-seccion">All Games</h2>
+            </div>
+            <div class="grid-juegos" id="contenedor-juegos"></div>
+        </div>
+
+        <!-- VISTA DE DETALLES MULTI-PKG -->
+        <div id="view-details" class="vista-oculta">
+            <button class="btn-volver" id="btn-volver" tabindex="0">← Back to Games</button>
+            <div class="detalle-contenedor">
+                <img id="detalle-portada" src="" alt="Portada">
+                <div class="detalle-info">
+                    <h2 id="detalle-titulo">Game Title</h2>
+                    <p class="detalle-desc">Select the packages you want to install. Start with the Base Game, followed by Updates, and finally DLCs.</p>
+                    <div id="lista-descargas" class="grid-descargas"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="database.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
