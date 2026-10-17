@@ -1,4 +1,4 @@
-// Archivo: app.js (Tienda PS4 - Autodetección de IP y Entorno)
+// Archivo: app.js (Tienda PS4 - Formato de Payload Corregido)
 
 const categoriasStore = [
     { id: "action", nombre: "Action", clase: "action" },
@@ -97,15 +97,16 @@ function mostrarJuegosFiltro(filtroCat, titulo, viewCategories, viewDetails, vie
 }
 
 // ==========================================
-// MOTOR PAYLOAD SERVER (Autodetección de Host)
+// MOTOR PAYLOAD SERVER (Sintaxis JSON Estricta GoldHEN)
 // ==========================================
 function instalarPKG(link) {
-    const comando = `install_package pkg_urls=["${link}"]\n`;
+    // Formato JSON puro que espera GoldHEN en el puerto 9090
+    const payloadData = JSON.stringify({
+        type: "direct",
+        packages: [link]
+    });
 
-    // Detectamos si estamos en la PS4 o si usamos localhost por defecto para la consola
-    // Como la tienda corre en el navegador de la PS4, la IP de su propio payload es 127.0.0.1
-    const destinoHost = "127.0.0.1";
-    const urlDestino = `http://${destinoHost}:9090`;
+    const urlDestino = "http://127.0.0.1:9090";
 
     const form = document.createElement('form');
     form.action = urlDestino;
@@ -114,18 +115,18 @@ function instalarPKG(link) {
 
     const input = document.createElement('input');
     input.type = 'hidden';
-    input.name = 'data';
-    input.value = comando;
+    input.name = 'json';
+    input.value = payloadData;
 
     form.appendChild(input);
     document.body.appendChild(form);
     
     try {
         form.submit();
-        alert("¡Orden enviada al Payload Server de la PS4!\nRevisa tus notificaciones.");
+        alert("¡Paquete enviado al gestor de la PS4!");
     } catch (e) {
         const img = new Image();
-        img.src = `${urlDestino}/?cmd=` + encodeURIComponent(comando);
+        img.src = `${urlDestino}/?cmd=` + encodeURIComponent(payloadData);
         alert("¡Enviado a la cola de la consola!");
     } finally {
         setTimeout(() => {
