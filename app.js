@@ -1,4 +1,4 @@
-// Archivo: app.js (Motor de inyección directa a GoldHEN)
+// Archivo: app.js (Motor de inyección a Payload Server - Puerto 9090)
 
 const categoriasStore = [
     { id: "action", nombre: "Action", clase: "action" },
@@ -75,25 +75,20 @@ function mostrarJuegosFiltro(filtroCat, titulo) {
 }
 
 // ==========================================
-// MOTOR GOLDHEN BGDL (Background Downloader)
+// MOTOR PAYLOAD SERVER (Puerto 9090)
 // ==========================================
 function instalarPKG(link) {
-    // Le pega al puerto local de GoldHEN para instalar directo en el sistema
-    fetch('http://127.0.0.1:32038/api/install', {
+    // Comando nativo que entiende el servidor de payloads de GoldHEN
+    const comando = `install_package pkg_urls=["${link}"]\n`;
+
+    // Le disparamos al puerto 9090 local de la consola
+    fetch('http://127.0.0.1:9090', {
         method: 'POST',
-        mode: 'no-cors', // Evita bloqueos de seguridad del navegador
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            type: 'direct',
-            packages: [link]
-        })
+        body: comando
     }).then(() => {
-        // En vez de abrir una ventana, te avisa y sigue en la tienda
-        alert("¡Enviado a Notificaciones!\nYa puedes cerrar la tienda, el juego se descargará en segundo plano a máxima velocidad.");
+        alert("¡Enviado al Payload Server!\nRevisa las notificaciones de descarga en tu PS4.");
     }).catch(err => {
-        alert("Error de conexión.\nAsegúrate de tener la opción 'Enable API' activada en los ajustes de GoldHEN.");
+        alert("Error de conexión con el Payload Server.\nAsegúrate de tener el puerto 9090 activo en los ajustes de GoldHEN.");
     });
 }
 
@@ -124,7 +119,7 @@ function abrirDetalles(juego) {
             <span class="btn-peso">${desc.peso}</span>
         `;
         
-        // Disparamos la API de GoldHEN al presionar el botón o presionar X
+        // Disparamos el Payload Server al presionar el botón o presionar X
         a.onclick = (e) => {
             e.preventDefault();
             instalarPKG(desc.link);
