@@ -1,4 +1,4 @@
-// Archivo: app.js (Tienda PS4 - Formato de Payload Corregido)
+// Archivo: app.js (Web Store PS4 - Integración Oficial Remote Package Installer)
 
 const categoriasStore = [
     { id: "action", nombre: "Action", clase: "action" },
@@ -97,44 +97,39 @@ function mostrarJuegosFiltro(filtroCat, titulo, viewCategories, viewDetails, vie
 }
 
 // ==========================================
-// MOTOR PAYLOAD SERVER (Sintaxis JSON Estricta GoldHEN)
+// MOTOR DE INSTALACIÓN (Remote Package Installer - Puerto 12800)
 // ==========================================
 function instalarPKG(link) {
-    // Formato JSON puro que espera GoldHEN en el puerto 9090
-    const payloadData = JSON.stringify({
+    // Nota: Reemplaza '127.0.0.1' por la IP local de tu PS4 si hospedas la tienda fuera de la consola,
+    // o usa '127.0.0.1' si ejecutas la tienda de forma local en la PS4.
+    const ps4Ip = "127.0.0.1"; 
+    const rpiUrl = `http://${ps4Ip}:12800/api/install`;
+
+    const payloadData = {
         type: "direct",
         packages: [link]
+    };
+
+    fetch(rpiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payloadData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Respuesta de red errónea");
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert("¡Paquete enviado con éxito a Remote Package Installer!\nRevisa las notificaciones de tu PS4.");
+    })
+    .catch(error => {
+        console.error("Error de instalación:", error);
+        alert("No se pudo conectar con Remote Package Installer.\nAsegúrate de tener la app RPI abierta en la PS4 y de no usar una tienda HTTPS bloqueada por el navegador.");
     });
-
-    const urlDestino = "http://127.0.0.1:9090";
-
-    const form = document.createElement('form');
-    form.action = urlDestino;
-    form.method = 'POST';
-    form.style.display = 'none';
-
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'json';
-    input.value = payloadData;
-
-    form.appendChild(input);
-    document.body.appendChild(form);
-    
-    try {
-        form.submit();
-        alert("¡Paquete enviado al gestor de la PS4!");
-    } catch (e) {
-        const img = new Image();
-        img.src = `${urlDestino}/?cmd=` + encodeURIComponent(payloadData);
-        alert("¡Enviado a la cola de la consola!");
-    } finally {
-        setTimeout(() => {
-            if (form.parentNode) {
-                document.body.removeChild(form);
-            }
-        }, 1000);
-    }
 }
 
 function abrirDetalles(juego, viewGames, viewDetails) {
